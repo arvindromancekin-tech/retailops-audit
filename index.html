@@ -382,7 +382,19 @@
         let standardViewModeType = 'bar';
         let pendingDeleteId = null;
 
+        // Security PIN Protection Function
+        function checkSecurityPin() {
+            const savedPin = "1234"; // Aap yahan apna manchaha PIN set kar sakte hain
+            const userPin = prompt("Portal access karne ke liye Security PIN darj karein:");
+            if (userPin !== savedPin) {
+                alert("Galat PIN! Access denied.");
+                document.body.innerHTML = "<div style='display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; text-align:center;'><div><h2 style='color:#ef4444; font-size:24px; font-weight:bold;'>Access Denied</h2><p style='color:#64748b; margin-top:8px;'>Sahi PIN darj karne par hi portal khulega.</p></div></div>";
+                throw new Error("Unauthorized access");
+            }
+        }
+
         window.onload = function() {
+            checkSecurityPin(); // Page load hote hi PIN check karega
             document.getElementById('form-date').value = new Date().toISOString().split('T')[0];
             populateDropdowns();
             fetchCloudData();
