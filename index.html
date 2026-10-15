@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetailOps Romance - Live Sync Audit Portal</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff', 100: '#e0effe', 500: '#2563eb', 600: '#1d4ed8', 700: '#1e40af', 900: '#1e3a8a',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-600 p-2 rounded-lg text-white">
+                        <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold leading-tight">RetailOps Romance</h1>
+                        <p class="text-xs text-slate-400">Live Central Database Connected</p>
+                    </div>
+                </div>
+
+                <nav class="hidden lg:flex space-x-1">
+                    <button onclick="switchTab('analytics')" id="nav-analytics" class="px-3 py-2 rounded-md text-xs font-medium bg-brand-600 text-white"><i class="fa-solid fa-chart-line mr-1.5"></i>Analytics</button>
+                    <button onclick="switchTab('new-entry')" id="nav-new-entry" class="px-3 py-2 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800"><i class="fa-solid fa-clipboard-check mr-1.5"></i>New Audit</button>
+                    <button onclick="switchTab('stores')" id="nav-stores" class="px-3 py-2 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800"><i class="fa-solid fa-store mr-1.5"></i>Stores & Rename</button>
+                    <button onclick="switchTab('managers')" id="nav-managers" class="px-3 py-2 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800"><i class="fa-solid fa-user-tie mr-1.5"></i>Manager Performance</button>
+                    <button onclick="switchTab('reports')" id="nav-reports" class="px-3 py-2 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800"><i class="fa-solid fa-folder-open mr-1.5"></i>History</button>
+                </nav>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="fetchCloudData()" id="sync-btn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate" id="sync-icon"></i> <span>Sync Data</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- VIEW 1: DASHBOARD -->
+        <section id="view-analytics" class="space-y-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Yearly Performance Dashboard</h2>
+                    <p class="text-xs text-slate-500">Real-time synced multi-device audit data</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Select Store</label>
+                        <select id="filter-store" onchange="renderAnalytics()" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg p-2 font-medium">
+                            <option value="ALL">All Stores Overview</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Select Year</label>
+                        <select id="filter-year" onchange="renderAnalytics()" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg p-2 font-medium">
+                            <option value="2026" selected>2026</option>
+                            <option value="2027">2027</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Avg Annual Health</span>
+                    <div class="mt-2 flex items-baseline">
+                        <span id="kpi-avg-score" class="text-3xl font-extrabold text-slate-900">--%</span>
+                        <span id="kpi-avg-status" class="ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">No Data</span>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Top Standard</span>
+                    <div class="mt-2">
+                        <span id="kpi-top-std" class="text-base font-bold text-slate-900 block truncate">--</span>
+                        <span id="kpi-top-std-score" class="text-xs text-slate-500 font-semibold">--%</span>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Focus Area</span>
+                    <div class="mt-2">
+                        <span id="kpi-low-std" class="text-base font-bold text-slate-900 block truncate">--</span>
+                        <span id="kpi-low-std-score" class="text-xs text-slate-500 font-semibold">--%</span>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Total Audits</span>
+                    <div class="mt-2 flex items-baseline">
+                        <span id="kpi-total-audits" class="text-3xl font-extrabold text-slate-900">0</span>
+                        <span class="ml-2 text-xs text-slate-500">logged</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart & Rankings -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <h3 class="font-bold text-slate-900 mb-4">Month-by-Month Overall Trend</h3>
+                    <div class="relative h-64 w-full"><canvas id="chart-monthly-trend"></canvas></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <h3 class="font-bold text-slate-900 mb-4">Store Performance Ranking</h3>
+                    <div id="store-ranking-list" class="space-y-3 flex-grow overflow-y-auto max-h-64 custom-scrollbar pr-1"></div>
+                </div>
+            </div>
+
+            <!-- STANDARD COMPARISON -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <h3 class="font-bold text-slate-900">Standard-wise Monthly Comparison</h3>
+                    <div class="flex items-center gap-2">
+                        <button onclick="setStandardViewMode('bar')" id="btn-mode-bar" class="px-3 py-1 text-xs font-semibold rounded-lg bg-brand-600 text-white">Bar Chart</button>
+                        <button onclick="setStandardViewMode('line')" id="btn-mode-line" class="px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600">Line Plot</button>
+                    </div>
+                </div>
+                <div class="relative h-80 w-full"><canvas id="chart-standard-monthly"></canvas></div>
+            </div>
+
+            <!-- MATRIX TABLE -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <h3 class="font-bold text-slate-900">Monthly Standards Compliance Matrix</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead class="bg-slate-100 border-b text-slate-700">
+                            <tr>
+                                <th class="px-4 py-3 font-bold">STANDARD CATEGORY</th>
+                                <th class="px-3 py-3 text-center">JAN</th><th class="px-3 py-3 text-center">FEB</th><th class="px-3 py-3 text-center">MAR</th>
+                                <th class="px-3 py-3 text-center">APR</th><th class="px-3 py-3 text-center">MAY</th><th class="px-3 py-3 text-center">JUN</th>
+                                <th class="px-3 py-3 text-center">JUL</th><th class="px-3 py-3 text-center">AUG</th><th class="px-3 py-3 text-center">SEP</th>
+                                <th class="px-3 py-3 text-center">OCT</th><th class="px-3 py-3 text-center">NOV</th><th class="px-3 py-3 text-center">DEC</th>
+                                <th class="px-4 py-3 text-center font-bold">AVG</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standards-matrix-body" class="divide-y text-slate-700 font-medium"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: NEW AUDIT -->
+        <section id="view-new-entry" class="hidden max-w-4xl mx-auto space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-bold text-slate-900 mb-6">New Shop Visit Audit Form</h2>
+                <form id="audit-form" onsubmit="promptSaveAudit(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Store Outlet *</label>
+                            <select id="form-store" required onchange="updateManagerDropdown()" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                                <option value="" disabled selected>Select Store...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Audit Date *</label>
+                            <input type="date" id="form-date" required class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Store Manager On-Duty *</label>
+                            <select id="form-sm" required class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                                <option value="" disabled selected>Select Manager...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Sliders -->
+                    <div class="space-y-4">
+                        <h3 class="text-md font-bold text-slate-900">Core Operational Standards</h3>
+                        <div class="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                            <div class="flex justify-between items-center"><label class="font-bold text-xs">1. Visual Merchandising (VM)</label><span id="val-std-vm" class="font-bold text-brand-600">85%</span></div>
+                            <input type="range" min="0" max="100" value="85" id="range-std-vm" oninput="updateFormScores()" class="w-full accent-brand-600">
+                        </div>
+                        <div class="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                            <div class="flex justify-between items-center"><label class="font-bold text-xs">2. Inventory & Stock Management</label><span id="val-std-inv" class="font-bold text-brand-600">80%</span></div>
+                            <input type="range" min="0" max="100" value="80" id="range-std-inv" oninput="updateFormScores()" class="w-full accent-brand-600">
+                        </div>
+                        <div class="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                            <div class="flex justify-between items-center"><label class="font-bold text-xs">3. Staff Grooming & SOP</label><span id="val-std-staff" class="font-bold text-brand-600">90%</span></div>
+                            <input type="range" min="0" max="100" value="90" id="range-std-staff" oninput="updateFormScores()" class="w-full accent-brand-600">
+                        </div>
+                        <div class="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                            <div class="flex justify-between items-center"><label class="font-bold text-xs">4. Cashiering & POS Accuracy</label><span id="val-std-pos" class="font-bold text-brand-600">88%</span></div>
+                            <input type="range" min="0" max="100" value="88" id="range-std-pos" oninput="updateFormScores()" class="w-full accent-brand-600">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700">Key Strengths & Observations</label>
+                            <textarea id="form-strengths" rows="3" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700">Critical Operational Gaps / CAPA</label>
+                            <textarea id="form-gaps" rows="3" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700">Upload Evidence Images</label>
+                            <input type="file" id="form-image" accept="image/*" multiple class="w-full text-xs text-slate-500">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t">
+                        <button type="submit" id="save-btn" class="px-6 py-2.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Save & Cloud Sync
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- VIEW 3: STORES -->
+        <section id="view-stores" class="hidden space-y-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <input type="text" id="new-store-id" placeholder="Store ID (e.g. MZ-031)" class="p-2 border rounded-lg text-xs">
+                <input type="text" id="new-store-name" placeholder="Store Name" class="p-2 border rounded-lg text-xs">
+                <input type="text" id="new-store-mgr" placeholder="Manager Name" class="p-2 border rounded-lg text-xs">
+                <button onclick="addNewStore()" class="bg-brand-600 text-white font-bold text-xs px-4 py-2 rounded-lg">Add Store</button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-100 border-b">
+                        <tr><th class="px-4 py-3">Store ID</th><th class="px-4 py-3">Store Name</th><th class="px-4 py-3">Assigned Manager</th><th class="px-4 py-3 text-right">Actions</th></tr>
+                    </thead>
+                    <tbody id="stores-table-body" class="divide-y"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- VIEW 4: MANAGERS -->
+        <section id="view-managers" class="hidden space-y-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">From Date</label>
+                        <input type="date" id="mgr-from-date" onchange="renderManagersTable()" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">To Date</label>
+                        <input type="date" id="mgr-to-date" onchange="renderManagersTable()" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Sort Avg SOP Score</label>
+                        <select id="mgr-score-sort" onchange="renderManagersTable()" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs">
+                            <option value="none">Default (Alphabetical)</option>
+                            <option value="desc">High to Low Score</option>
+                            <option value="asc">Low to High Score</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-100 border-b">
+                        <tr><th class="px-4 py-3">Manager Name</th><th class="px-4 py-3">Stores Managed</th><th class="px-4 py-3 text-center">Avg SOP Score</th><th class="px-4 py-3 text-right">Status</th></tr>
+                    </thead>
+                    <tbody id="managers-table-body" class="divide-y"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- VIEW 5: HISTORY -->
+        <section id="view-reports" class="hidden space-y-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Filter Date</label>
+                        <input type="date" id="hist-date" onchange="renderReportsTable()" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Store Name</label>
+                        <select id="hist-store" onchange="renderReportsTable()" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                            <option value="">All Stores</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Store Manager</label>
+                        <select id="hist-mgr" onchange="renderReportsTable()" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                            <option value="">All Managers</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Score Sort</label>
+                        <select id="hist-sort" onchange="renderReportsTable()" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                            <option value="none">Default (Recent)</option>
+                            <option value="asc">Low to High Score</option>
+                            <option value="desc">High to Low Score</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2 flex items-end gap-2 bg-slate-50 p-2 rounded-lg border">
+                        <div class="flex-1">
+                            <label class="block text-[10px] font-semibold text-slate-500">From Date</label>
+                            <input type="date" id="export-from" class="w-full p-1 bg-white border rounded text-[11px]">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-[10px] font-semibold text-slate-500">To Date</label>
+                            <input type="date" id="export-to" class="w-full p-1 bg-white border rounded text-[11px]">
+                        </div>
+                        <button onclick="downloadDateRangeReport()" class="bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] px-3 py-1.5 rounded-lg self-end flex items-center gap-1">Export</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-100 border-b">
+                        <tr><th class="px-4 py-3">Store Name</th><th class="px-3 py-3">Audit Date</th><th class="px-3 py-3">Manager</th><th class="px-3 py-3 text-center">Score</th><th class="px-3 py-3 text-center">Images</th><th class="px-3 py-3 text-right">Actions</th></tr>
+                    </thead>
+                    <tbody id="reports-table-body" class="divide-y"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modals -->
+    <div id="save-confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <h3 class="text-lg font-bold text-slate-900">Confirmation</h3>
+            <p class="text-sm text-slate-500">Save and upload to Central Cloud Sheet?</p>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeSaveModal(false)" class="flex-1 py-2 text-xs font-bold bg-slate-100 rounded-xl">No</button>
+                <button type="button" onclick="closeSaveModal(true)" class="flex-1 py-2 text-xs font-bold text-white bg-brand-600 rounded-xl">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <h3 class="text-lg font-bold text-slate-900">Confirmation</h3>
+            <p class="text-sm text-slate-500">You want to Delete?</p>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeDeleteModal(false)" class="flex-1 py-2 text-xs font-bold bg-slate-100 rounded-xl">No</button>
+                <button type="button" onclick="closeDeleteModal(true)" class="flex-1 py-2 text-xs font-bold text-white bg-red-600 rounded-xl">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="image-preview-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-5 relative max-h-[85vh] flex flex-col">
+            <button onclick="closeImageModal()" class="absolute top-3 right-3 text-slate-500 text-xl font-bold px-2">&times;</button>
+            <h3 class="font-bold text-slate-900 mb-3 text-sm">Audit Evidence Images</h3>
+            <div id="modal-images-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto custom-scrollbar p-1 flex-grow"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbykMtubdCx9XiMJfFA482zoG7EHs4A9kHyqE_paAWNRv-FFcQnwKXQBtQ40IyTmWZaJ/exec";
+
+        let STORES = JSON.parse(localStorage.getItem('retail_stores_v2')) || [];
+        let auditData = [];
+        let trendChartInstance = null;
+        let standardChartInstance = null;
+        let standardViewModeType = 'bar';
+        let pendingDeleteId = null;
+
+        window.onload = function() {
+            document.getElementById('form-date').value = new Date().toISOString().split('T')[0];
+            populateDropdowns();
+            fetchCloudData();
+        };
+
+        async function fetchCloudData() {
+            const syncIcon = document.getElementById('sync-icon');
+            syncIcon.classList.add('fa-spin');
+            
+            if(API_URL && !API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+                try {
+                    const response = await fetch(API_URL);
+                    const cloudData = await response.json();
+                    if(Array.isArray(cloudData)) {
+                        auditData = cloudData;
+                    }
+                } catch(e) {
+                    console.error("Cloud fetch failed, using local cache", e);
+                    auditData = JSON.parse(localStorage.getItem('retail_audit_data_v2')) || [];
+                }
+            } else {
+                auditData = JSON.parse(localStorage.getItem('retail_audit_data_v2')) || [];
+            }
+
+            syncIcon.classList.remove('fa-spin');
+            refreshAllViews();
+        }
+
+        function refreshAllViews() {
+            renderAnalytics();
+            renderStoresTable();
+            renderManagersTable();
+            renderReportsTable();
+            populateHistoryFilters();
+        }
+
+        function switchTab(tab) {
+            ['analytics', 'new-entry', 'stores', 'managers', 'reports'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`nav-${t}`)?.classList.remove('bg-brand-600', 'text-white');
+                document.getElementById(`nav-${t}`)?.classList.add('text-slate-300');
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`nav-${tab}`)?.classList.add('bg-brand-600', 'text-white');
+            document.getElementById(`nav-${tab}`)?.classList.remove('text-slate-300');
+            if(tab === 'reports') { populateHistoryFilters(); renderReportsTable(); }
+            if(tab === 'managers') { renderManagersTable(); }
+            if(tab === 'analytics') { renderAnalytics(); }
+        }
+
+        function populateDropdowns() {
+            const fStore = document.getElementById('filter-store');
+            const formStore = document.getElementById('form-store');
+            fStore.innerHTML = `<option value="ALL">All Stores Overview (${STORES.length} Stores)</option>` + STORES.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+            formStore.innerHTML = `<option value="" disabled selected>Select Store...</option>` + STORES.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+            updateManagerDropdown();
+        }
+
+        function populateHistoryFilters() {
+            const hStore = document.getElementById('hist-store');
+            const hMgr = document.getElementById('hist-mgr');
+            hStore.innerHTML = `<option value="">All Stores</option>` + STORES.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+            let allMgrs = [];
+            STORES.forEach(s => { if(s.manager && s.manager !== "Unassigned") allMgrs.push(s.manager); });
+            auditData.forEach(d => { if(d.storeManager) allMgrs.push(d.storeManager); });
+            hMgr.innerHTML = `<option value="">All Managers</option>` + [...new Set(allMgrs)].map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+
+        function updateManagerDropdown() {
+            const formStore = document.getElementById('form-store').value;
+            const formSm = document.getElementById('form-sm');
+            const storeObj = STORES.find(s => s.name === formStore);
+            if(storeObj && storeObj.manager) {
+                formSm.innerHTML = `<option value="${storeObj.manager}" selected>${storeObj.manager}</option>`;
+            } else {
+                let uniqueManagers = [...new Set(STORES.map(s => s.manager).filter(m => m && m !== "Unassigned"))];
+                formSm.innerHTML = uniqueManagers.length ? uniqueManagers.map(m => `<option value="${m}">${m}</option>`).join('') : `<option value="Default Manager">Default Manager</option>`;
+            }
+        }
+
+        function updateFormScores() {
+            ['vm', 'inv', 'staff', 'pos'].forEach(id => {
+                document.getElementById(`val-std-${id}`).innerText = document.getElementById(`range-std-${id}`).value + '%';
+            });
+        }
+
+        function promptSaveAudit(e) {
+            e.preventDefault();
+            document.getElementById('save-confirm-modal').classList.remove('hidden');
+        }
+
+        function closeSaveModal(isConfirmed) {
+            document.getElementById('save-confirm-modal').classList.add('hidden');
+            if(isConfirmed) executeAuditSave();
+        }
+
+        function convertFilesToBase64(files) {
+            return Promise.all(Array.from(files).map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = error => reject(error);
+                    reader.readAsDataURL(file);
+                });
+            }));
+        }
+
+        async function executeAuditSave() {
+            const storeName = document.getElementById('form-store').value;
+            const smName = document.getElementById('form-sm').value;
+            const auditDate = document.getElementById('form-date').value;
+            
+            const vm = Number(document.getElementById('range-std-vm').value);
+            const inv = Number(document.getElementById('range-std-inv').value);
+            const staff = Number(document.getElementById('range-std-staff').value);
+            const pos = Number(document.getElementById('range-std-pos').value);
+            const total = Math.round((vm + inv + staff + pos) / 4);
+
+            let imageUrls = [];
+            const imageInput = document.getElementById('form-image');
+            if(imageInput.files && imageInput.files.length > 0) {
+                try { imageUrls = await convertFilesToBase64(imageInput.files); } catch(e) { console.error(e); }
+            }
+
+            const dObj = new Date(auditDate);
+            const newAudit = {
+                id: 'AUD-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+                store: storeName,
+                date: auditDate,
+                month: dObj.getMonth(),
+                year: dObj.getFullYear(),
+                storeManager: smName,
+                scores: { vm, inv, staff, pos },
+                totalScore: total,
+                strengths: document.getElementById('form-strengths').value,
+                gaps: document.getElementById('form-gaps').value,
+                images: imageUrls
+            };
+
+            if(API_URL && !API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+                try {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: "add", data: newAudit })
+                    });
+                } catch(e) { console.error(e); }
+            }
+
+            auditData.unshift(newAudit);
+            localStorage.setItem('retail_audit_data_v2', JSON.stringify(auditData));
+            document.getElementById('audit-form').reset();
+            updateFormScores();
+            switchTab('analytics');
+            setTimeout(fetchCloudData, 1000);
+        }
+
+        function promptDeleteAudit(id) {
+            pendingDeleteId = id;
+            document.getElementById('delete-confirm-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal(isConfirmed) {
+            document.getElementById('delete-confirm-modal').classList.add('hidden');
+            if(isConfirmed && pendingDeleteId) {
+                auditData = auditData.filter(d => d.id !== pendingDeleteId);
+                localStorage.setItem('retail_audit_data_v2', JSON.stringify(auditData));
+                if(API_URL && !API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+                    fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "delete", id: pendingDeleteId }) }).catch(e=>console.error(e));
+                }
+                refreshAllViews();
+            }
+            pendingDeleteId = null;
+        }
+
+        function addNewStore() {
+            const id = document.getElementById('new-store-id').value;
+            const name = document.getElementById('new-store-name').value;
+            const manager = document.getElementById('new-store-mgr').value || "Unassigned";
+            if(!id || !name) return alert("Store ID and Name required");
+            STORES.push({ id, name, manager });
+            localStorage.setItem('retail_stores_v2', JSON.stringify(STORES));
+            document.getElementById('new-store-id').value = '';
+            document.getElementById('new-store-name').value = '';
+            document.getElementById('new-store-mgr').value = '';
+            populateDropdowns();
+            refreshAllViews();
+        }
+
+        function enableInlineEdit(index) {
+            const tbody = document.getElementById('stores-table-body');
+            const rows = tbody.getElementsByTagName('tr');
+            const s = STORES[index];
+            rows[index].innerHTML = `
+                <td class="px-4 py-3 font-semibold">${s.id}</td>
+                <td class="px-4 py-3"><input type="text" id="edit-name-${index}" value="${s.name}" class="p-1 border rounded text-xs w-full"></td>
+                <td class="px-4 py-3"><input type="text" id="edit-mgr-${index}" value="${s.manager}" class="p-1 border rounded text-xs w-full"></td>
+                <td class="px-4 py-3 text-right space-x-1">
+                    <button onclick="saveInlineEdit(${index})" class="text-white bg-emerald-600 px-2.5 py-1 rounded">Save</button>
+                    <button onclick="renderStoresTable()" class="text-slate-600 bg-slate-200 px-2.5 py-1 rounded">Cancel</button>
+                </td>
+            `;
+        }
+
+        function saveInlineEdit(index) {
+            const newName = document.getElementById(`edit-name-${index}`).value;
+            const newMgr = document.getElementById(`edit-mgr-${index}`).value;
+            if(!newName) return alert("Store name cannot be empty.");
+            STORES[index].name = newName;
+            STORES[index].manager = newMgr;
+            localStorage.setItem('retail_stores_v2', JSON.stringify(STORES));
+            populateDropdowns();
+            refreshAllViews();
+        }
+
+        function deleteStore(index) {
+            if(confirm("Are you sure you want to delete this store?")) {
+                STORES.splice(index, 1);
+                localStorage.setItem('retail_stores_v2', JSON.stringify(STORES));
+                populateDropdowns();
+                refreshAllViews();
+            }
+        }
+
+        function renderStoresTable() {
+            const tbody = document.getElementById('stores-table-body');
+            if(STORES.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">No stores added yet.</td></tr>`; return; }
+            tbody.innerHTML = STORES.map((s, idx) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 font-semibold">${s.id}</td>
+                    <td class="px-4 py-3">${s.name}</td>
+                    <td class="px-4 py-3">${s.manager}</td>
+                    <td class="px-4 py-3 text-right space-x-1">
+                        <button onclick="enableInlineEdit(${idx})" class="text-brand-600 bg-brand-50 border px-2.5 py-1 rounded">Rename / Edit</button>
+                        <button onclick="deleteStore(${idx})" class="text-red-600 bg-red-50 border px-2.5 py-1 rounded">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderManagersTable() {
+            const tbody = document.getElementById('managers-table-body');
+            const fromDate = document.getElementById('mgr-from-date')?.value;
+            const toDate = document.getElementById('mgr-to-date')?.value;
+            const scoreSort = document.getElementById('mgr-score-sort')?.value || 'none';
+
+            let filteredAudits = auditData.filter(d => (!fromDate || d.date >= fromDate) && (!toDate || d.date <= toDate));
+            const managersMap = {};
+
+            STORES.forEach(s => {
+                if(s.manager && s.manager !== "Unassigned") {
+                    if(!managersMap[s.manager]) managersMap[s.manager] = { stores: new Set(), totalScore: 0, count: 0 };
+                    managersMap[s.manager].stores.add(s.name);
+                }
+            });
+
+            filteredAudits.forEach(d => {
+                if(d.storeManager && d.storeManager !== "Unassigned") {
+                    if(!managersMap[d.storeManager]) managersMap[d.storeManager] = { stores: new Set(), totalScore: 0, count: 0 };
+                    managersMap[d.storeManager].stores.add(d.store);
+                    managersMap[d.storeManager].totalScore += (d.totalScore || 0);
+                    managersMap[d.storeManager].count += 1;
+                }
+            });
+
+            let mgrList = Object.keys(managersMap).map(mgr => {
+                let count = managersMap[mgr].count;
+                return { name: mgr, stores: Array.from(managersMap[mgr].stores).join(', '), avgScore: count > 0 ? Math.round(managersMap[mgr].totalScore / count) : null };
+            });
+
+            if(scoreSort === 'desc') mgrList.sort((a, b) => (b.avgScore || 0) - (a.avgScore || 0));
+            else if(scoreSort === 'asc') mgrList.sort((a, b) => (a.avgScore || 0) - (b.avgScore || 0));
+
+            if(mgrList.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">No managers found.</td></tr>`; return; }
+
+            tbody.innerHTML = mgrList.map(mgr => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 font-semibold text-slate-900">${mgr.name}</td>
+                    <td class="px-4 py-3">${mgr.stores}</td>
+                    <td class="px-4 py-3 text-center font-bold ${mgr.avgScore !== null ? 'text-emerald-600' : 'text-slate-400'}">${mgr.avgScore !== null ? mgr.avgScore + '%' : 'No Audits'}</td>
+                    <td class="px-4 py-3 text-right"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px]">Active</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function setStandardViewMode(mode) {
+            standardViewModeType = mode;
+            document.getElementById('btn-mode-bar').className = mode === 'bar' ? "px-3 py-1 text-xs font-semibold rounded-lg bg-brand-600 text-white" : "px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600";
+            document.getElementById('btn-mode-line').className = mode === 'line' ? "px-3 py-1 text-xs font-semibold rounded-lg bg-brand-600 text-white" : "px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600";
+            renderAnalytics();
+        }
+
+        function renderAnalytics() {
+            const selectedStore = document.getElementById('filter-store').value;
+            const selectedYear = Number(document.getElementById('filter-year').value);
+
+            let currentAudits = auditData.filter(d => Number(d.year) === selectedYear);
+            if(selectedStore !== "ALL") currentAudits = currentAudits.filter(d => d.store === selectedStore);
+
+            let totalAuditsCount = currentAudits.length;
+            let avgCalculated = totalAuditsCount > 0 ? Math.round(currentAudits.reduce((acc, c) => acc + c.totalScore, 0) / totalAuditsCount) : 0;
+
+            document.getElementById('kpi-avg-score').innerText = totalAuditsCount > 0 ? avgCalculated + "%" : "--%";
+            document.getElementById('kpi-total-audits').innerText = totalAuditsCount;
+
+            if(totalAuditsCount > 0) {
+                let stdTotals = { vm: [], inv: [], staff: [], pos: [] };
+                currentAudits.forEach(d => {
+                    if(d.scores) {
+                        stdTotals.vm.push(d.scores.vm || d.totalScore);
+                        stdTotals.inv.push(d.scores.inv || d.totalScore);
+                        stdTotals.staff.push(d.scores.staff || d.totalScore);
+                        stdTotals.pos.push(d.scores.pos || d.totalScore);
+                    }
+                });
+                let stdAvgs = [
+                    { name: "Visual Merchandising (VM)", score: stdTotals.vm.length ? Math.round(stdTotals.vm.reduce((a,b)=>a+b,0)/stdTotals.vm.length) : avgCalculated },
+                    { name: "Inventory & Stock", score: stdTotals.inv.length ? Math.round(stdTotals.inv.reduce((a,b)=>a+b,0)/stdTotals.inv.length) : avgCalculated },
+                    { name: "Staff Grooming & SOP", score: stdTotals.staff.length ? Math.round(stdTotals.staff.reduce((a,b)=>a+b,0)/stdTotals.staff.length) : avgCalculated },
+                    { name: "Cashiering & POS", score: stdTotals.pos.length ? Math.round(stdTotals.pos.reduce((a,b)=>a+b,0)/stdTotals.pos.length) : avgCalculated }
+                ];
+                stdAvgs.sort((a,b) => b.score - a.score);
+                document.getElementById('kpi-top-std').innerText = stdAvgs[0].name;
+                document.getElementById('kpi-top-std-score').innerText = stdAvgs[0].score + "% average";
+                document.getElementById('kpi-low-std').innerText = stdAvgs[stdAvgs.length - 1].name;
+                document.getElementById('kpi-low-std-score').innerText = stdAvgs[stdAvgs.length - 1].score + "% average";
+            } else {
+                document.getElementById('kpi-top-std').innerText = "--";
+                document.getElementById('kpi-top-std-score').innerText = "--%";
+                document.getElementById('kpi-low-std').innerText = "--";
+                document.getElementById('kpi-low-std-score').innerText = "--%";
+            }
+
+            const rankingEl = document.getElementById('store-ranking-list');
+            if(STORES.length === 0) {
+                rankingEl.innerHTML = `<p class="text-xs text-slate-500">No stores available.</p>`;
+            } else {
+                rankingEl.innerHTML = STORES.map(s => {
+                    let sAudits = currentAudits.filter(d => d.store === s.name);
+                    let sAvg = sAudits.length > 0 ? Math.round(sAudits.reduce((acc,curr) => acc + curr.totalScore, 0)/sAudits.length) : null;
+                    return `<div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border"><span class="text-xs font-bold">${s.name}</span><span class="text-xs font-extrabold ${s.avg !== null ? 'text-emerald-600' : 'text-slate-400'}">${s.avg !== null ? s.avg + '%' : 'No Entry'}</span></div>`;
+                }).join('');
+            }
+
+            const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            let monthlyAvgScores = Array(12).fill(null);
+            for(let m = 0; m < 12; m++) {
+                let mAudits = currentAudits.filter(d => Number(d.month) === m);
+                if(mAudits.length > 0) monthlyAvgScores[m] = Math.round(mAudits.reduce((a, c) => a + c.totalScore, 0) / mAudits.length);
+            }
+
+            const ctx = document.getElementById('chart-monthly-trend').getContext('2d');
+            if(trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'Overall Trend', data: monthlyAvgScores, borderColor: '#2563eb', fill: true, backgroundColor: 'rgba(37,99,235,0.1)', spanGaps: true }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }
+            });
+
+            renderStandardChartAndMatrix(currentAudits, labels);
+        }
+
+        function renderStandardChartAndMatrix(currentAudits, labels) {
+            let matrix = [
+                { name: "Visual Merchandising (VM)", key: 'vm', data: Array(12).fill("--"), avg: "--" },
+                { name: "Inventory & Stock Management", key: 'inv', data: Array(12).fill("--"), avg: "--" },
+                { name: "Staff Grooming & SOP", key: 'staff', data: Array(12).fill("--"), avg: "--" },
+                { name: "Cashiering & POS Accuracy", key: 'pos', data: Array(12).fill("--"), avg: "--" }
+            ];
+
+            matrix.forEach(row => {
+                let totalRowScores = [];
+                for(let m = 0; m < 12; m++) {
+                    let mAudits = currentAudits.filter(d => Number(d.month) === m);
+                    if(mAudits.length > 0) {
+                        let sum = mAudits.reduce((acc, c) => acc + (c.scores ? c.scores[row.key] : c.totalScore), 0);
+                        let avgM = Math.round(sum / mAudits.length);
+                        row.data[m] = avgM + "%";
+                        totalRowScores.push(avgM);
+                    }
+                }
+                if(totalRowScores.length > 0) row.avg = Math.round(totalRowScores.reduce((a,b)=>a+b,0)/totalRowScores.length) + "%";
+            });
+
+            document.getElementById('standards-matrix-body').innerHTML = matrix.map(row => `
+                <tr class="hover:bg-slate-50 border-b">
+                    <td class="px-4 py-3 font-bold text-slate-900">${row.name}</td>
+                    ${row.data.map(val => `<td class="px-3 py-3 text-center ${val !== '--' ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${val}</td>`).join('')}
+                    <td class="px-4 py-3 text-center font-bold text-brand-600 bg-slate-50">${row.avg}</td>
+                </tr>
+            `).join('');
+
+            const ctx = document.getElementById('chart-standard-monthly').getContext('2d');
+            if(standardChartInstance) standardChartInstance.destroy();
+            const colors = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6'];
+            const datasets = matrix.map((row, idx) => ({
+                label: row.name,
+                data: row.data.map(v => v === "--" ? null : Number(v.replace('%', ''))),
+                backgroundColor: colors[idx],
+                borderColor: colors[idx],
+                borderWidth: 2,
+                fill: false
+            }));
+
+            standardChartInstance = new Chart(ctx, {
+                type: standardViewModeType,
+                data: { labels, datasets },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }
+            });
+        }
+
+        function renderReportsTable() {
+            const tbody = document.getElementById('reports-table-body');
+            const filterDate = document.getElementById('hist-date').value;
+            const filterStore = document.getElementById('hist-store').value;
+            const filterMgr = document.getElementById('hist-mgr').value;
+            const sortOrder = document.getElementById('hist-sort').value;
+
+            let filtered = auditData.filter(d => (!filterDate || d.date === filterDate) && (!filterStore || d.store === filterStore) && (!filterMgr || d.storeManager === filterMgr));
+            if(sortOrder === 'asc') filtered.sort((a, b) => a.totalScore - b.totalScore);
+            else if(sortOrder === 'desc') filtered.sort((a, b) => b.totalScore - a.totalScore);
+
+            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No audit reports match your criteria.</td></tr>`; return; }
+
+            tbody.innerHTML = filtered.map(d => {
+                let imgCount = d.images ? d.images.length : 0;
+                let imgParam = d.images ? JSON.stringify(d.images).replace(/"/g, '&quot;') : '[]';
+                return `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 font-semibold">${d.store}</td>
+                    <td class="px-3 py-3">${d.date}</td>
+                    <td class="px-3 py-3">${d.storeManager}</td>
+                    <td class="px-3 py-3 text-center font-bold text-emerald-600">${d.totalScore}%</td>
+                    <td class="px-3 py-3 text-center">
+                        ${imgCount > 0 ? `<button onclick="previewImages(${imgParam})" class="text-brand-600 bg-brand-50 border px-2 py-1 rounded text-[11px] font-semibold"><i class="fa-solid fa-images"></i> View (${imgCount})</button>` : `<span class="text-slate-400 text-[11px]">No Images</span>`}
+                    </td>
+                    <td class="px-3 py-3 text-right space-x-1">
+                        <button onclick="downloadSingleReport('${d.id}')" class="bg-slate-800 text-white px-2 py-1 rounded text-[11px]">Download</button>
+                        <button onclick="promptDeleteAudit('${d.id}')" class="bg-red-600 text-white px-2 py-1 rounded text-[11px]">Delete</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function previewImages(imgList) {
+            const container = document.getElementById('modal-images-container');
+            container.innerHTML = imgList.map(url => `<div class="border rounded-lg overflow-hidden bg-slate-50 p-1"><img src="${url}" class="w-full h-48 object-cover rounded"></div>`).join('');
+            document.getElementById('image-preview-modal').classList.remove('hidden');
+        }
+
+        function closeImageModal() { document.getElementById('image-preview-modal').classList.add('hidden'); }
+
+        function downloadSingleReport(id) {
+            const report = auditData.find(d => d.id === id);
+            if(!report) return alert("Report not found.");
+            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Score\n" + `"${report.store}","${report.date}","${report.storeManager}","${report.totalScore}%"\n`;
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Audit_${report.store}_${report.date}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadDateRangeReport() {
+            const fromDate = document.getElementById('export-from').value;
+            const toDate = document.getElementById('export-to').value;
+            if(!fromDate || !toDate) return alert("Select From and To date.");
+            let filtered = auditData.filter(d => d.date >= fromDate && d.date <= toDate);
+            if(filtered.length === 0) return alert("No reports in range.");
+            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Score\n";
+            filtered.forEach(r => { csvContent += `"${r.store}","${r.date}","${r.storeManager}","${r.totalScore}%"\n`; });
+            let link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `Audit_Range_${fromDate}_to_${toDate}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
