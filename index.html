@@ -384,7 +384,7 @@
 
         // Security PIN Protection Function
         function checkSecurityPin() {
-            const savedPin = "0504"; // Aap yahan apna manchaha PIN set kar sakte hain
+            const savedPin = "1234";
             const userPin = prompt("Portal access karne ke liye Security PIN darj karein:");
             if (userPin !== savedPin) {
                 alert("Galat PIN! Access denied.");
@@ -394,7 +394,7 @@
         }
 
         window.onload = function() {
-            checkSecurityPin(); // Page load hote hi PIN check karega
+            checkSecurityPin();
             document.getElementById('form-date').value = new Date().toISOString().split('T')[0];
             populateDropdowns();
             fetchCloudData();
@@ -736,7 +736,7 @@
                 rankingEl.innerHTML = STORES.map(s => {
                     let sAudits = currentAudits.filter(d => d.store === s.name);
                     let sAvg = sAudits.length > 0 ? Math.round(sAudits.reduce((acc,curr) => acc + curr.totalScore, 0)/sAudits.length) : null;
-                    return `<div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border"><span class="text-xs font-bold">${s.name}</span><span class="text-xs font-extrabold ${s.avg !== null ? 'text-emerald-600' : 'text-slate-400'}">${s.avg !== null ? s.avg + '%' : 'No Entry'}</span></div>`;
+                    return `<div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border"><span class="text-xs font-bold">${s.name}</span><span class="text-xs font-extrabold ${sAvg !== null ? 'text-emerald-600' : 'text-slate-400'}">${sAvg !== null ? sAvg + '%' : 'No Entry'}</span></div>`;
                 }).join('');
             }
 
@@ -848,14 +848,28 @@
 
         function closeImageModal() { document.getElementById('image-preview-modal').classList.add('hidden'); }
 
+        // Helper function to sanitize text for CSV export
+        function cleanCSVText(text) {
+            if (!text) return "";
+            return String(text).replace(/"/g, '""').replace(/\n/g, ' ');
+        }
+
         function downloadSingleReport(id) {
             const report = auditData.find(d => d.id === id);
             if(!report) return alert("Report not found.");
-            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Score\n" + `"${report.store}","${report.date}","${report.storeManager}","${report.totalScore}%"\n`;
+
+            let imgInfo = "No Images";
+            if(report.images && report.images.length > 0) {
+                imgInfo = `${report.images.length} Image(s) Attached`;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
+            csvContent += `"${cleanCSVText(report.store)}","${cleanCSVText(report.date)}","${cleanCSVText(report.storeManager)}","${report.totalScore}%","${cleanCSVText(report.strengths)}","${cleanCSVText(report.gaps)}","${cleanCSVText(imgInfo)}"\n`;
+            
             let encodedUri = encodeURI(csvContent);
             let link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Audit_${report.store}_${report.date}.csv`);
+            link.setAttribute("download", `Audit_${report.store.replace(/\s+/g, '_')}_${report.date}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -865,10 +879,16 @@
             const fromDate = document.getElementById('export-from').value;
             const toDate = document.getElementById('export-to').value;
             if(!fromDate || !toDate) return alert("Select From and To date.");
+            
             let filtered = auditData.filter(d => d.date >= fromDate && d.date <= toDate);
             if(filtered.length === 0) return alert("No reports in range.");
-            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Score\n";
-            filtered.forEach(r => { csvContent += `"${r.store}","${r.date}","${r.storeManager}","${r.totalScore}%"\n`; });
+
+            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
+            filtered.forEach(r => {
+                let imgInfo = (r.images && r.images.length > 0) ? `${r.images.length} Image(s) Attached` : "No Images";
+                csvContent += `"${cleanCSVText(r.store)}","${cleanCSVText(r.date)}","${cleanCSVText(r.storeManager)}","${r.totalScore}%","${cleanCSVText(r.strengths)}","${cleanCSVText(r.gaps)}","${cleanCSVText(imgInfo)}"\n`;
+            });
+
             let link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));
             link.setAttribute("download", `Audit_Range_${fromDate}_to_${toDate}.csv`);
