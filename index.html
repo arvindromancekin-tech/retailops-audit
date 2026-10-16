@@ -30,7 +30,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col pb-16 lg:pb-0">
 
     <!-- Top Header -->
     <header class="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
@@ -46,6 +46,7 @@
                     </div>
                 </div>
 
+                <!-- Desktop Navigation -->
                 <nav class="hidden lg:flex space-x-1">
                     <button type="button" onclick="switchTab('analytics')" id="nav-analytics" class="px-3 py-2 rounded-md text-xs font-medium bg-brand-600 text-white"><i class="fa-solid fa-chart-line mr-1.5"></i>Analytics</button>
                     <button type="button" onclick="switchTab('new-entry')" id="nav-new-entry" class="px-3 py-2 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800"><i class="fa-solid fa-clipboard-check mr-1.5"></i>New Audit</button>
@@ -62,6 +63,30 @@
             </div>
         </div>
     </header>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-50 flex justify-around items-center h-14 text-slate-400 text-[10px]">
+        <button type="button" onclick="switchTab('analytics')" id="mob-nav-analytics" class="flex flex-col items-center justify-center w-full h-full text-brand-500 font-bold">
+            <i class="fa-solid fa-chart-line text-sm mb-0.5"></i>
+            <span>Analytics</span>
+        </button>
+        <button type="button" onclick="switchTab('new-entry')" id="mob-nav-new-entry" class="flex flex-col items-center justify-center w-full h-full">
+            <i class="fa-solid fa-clipboard-check text-sm mb-0.5"></i>
+            <span>New Audit</span>
+        </button>
+        <button type="button" onclick="switchTab('stores')" id="mob-nav-stores" class="flex flex-col items-center justify-center w-full h-full">
+            <i class="fa-solid fa-store text-sm mb-0.5"></i>
+            <span>Stores</span>
+        </button>
+        <button type="button" onclick="switchTab('managers')" id="mob-nav-managers" class="flex flex-col items-center justify-center w-full h-full">
+            <i class="fa-solid fa-user-tie text-sm mb-0.5"></i>
+            <span>Managers</span>
+        </button>
+        <button type="button" onclick="switchTab('reports')" id="mob-nav-reports" class="flex flex-col items-center justify-center w-full h-full">
+            <i class="fa-solid fa-folder-open text-sm mb-0.5"></i>
+            <span>History</span>
+        </button>
+    </div>
 
     <!-- Main Container -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
@@ -327,8 +352,8 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <table class="w-full text-xs text-left">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                <table class="w-full text-xs text-left min-w-[600px]">
                     <thead class="bg-slate-100 border-b">
                         <tr><th class="px-4 py-3">Store Name</th><th class="px-3 py-3">Audit Date</th><th class="px-3 py-3">Manager</th><th class="px-3 py-3 text-center">Score</th><th class="px-3 py-3 text-center">Images</th><th class="px-3 py-3 text-right">Actions</th></tr>
                     </thead>
@@ -391,7 +416,7 @@
         let pendingDeleteId = null;
 
         function checkSecurityPin() {
-            const savedPin = "1234";
+            const savedPin = "0504";
             const userPin = prompt("Portal access karne ke liye Security PIN darj karein:");
             if (userPin !== savedPin) {
                 alert("Galat PIN! Access denied.");
@@ -443,19 +468,31 @@
             ['analytics', 'new-entry', 'stores', 'managers', 'reports'].forEach(t => {
                 const view = document.getElementById(`view-${t}`);
                 const nav = document.getElementById(`nav-${t}`);
+                const mobNav = document.getElementById(`mob-nav-${t}`);
+                
                 if(view) view.classList.add('hidden');
                 if(nav) {
                     nav.classList.remove('bg-brand-600', 'text-white');
                     nav.classList.add('text-slate-300');
                 }
+                if(mobNav) {
+                    mobNav.classList.remove('text-brand-500', 'font-bold');
+                    mobNav.classList.add('text-slate-400');
+                }
             });
 
             const activeView = document.getElementById(`view-${tab}`);
             const activeNav = document.getElementById(`nav-${tab}`);
+            const activeMobNav = document.getElementById(`mob-nav-${tab}`);
+
             if(activeView) activeView.classList.remove('hidden');
             if(activeNav) {
                 activeNav.classList.add('bg-brand-600', 'text-white');
                 activeNav.classList.remove('text-slate-300');
+            }
+            if(activeMobNav) {
+                activeMobNav.classList.add('text-brand-500', 'font-bold');
+                activeMobNav.classList.remove('text-slate-400');
             }
 
             if(tab === 'reports') { populateHistoryFilters(); renderReportsTable(); }
@@ -921,7 +958,7 @@
             let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
             filtered.forEach(r => {
                 let imgInfo = (r.images && r.images.length > 0) ? `${r.images.length} Image(s) Attached` : "No Images";
-                csvContent += `"${cleanCSVText(r.store)}","${cleanCSVText(r.date)}","${cleanCSVText(r.storeManager)}","${r.totalScore}%","${cleanCSVText(r.strengths)}","${cleanCSVText(r.gaps)}","${cleanCSVText(imgInfo)}"\n`;
+                csvContent += `"${cleanCSVText(r.store)}","${cleanCSVText(r.date)}","${cleanCSVText(r.storeManager)}","${report.totalScore}%","${cleanCSVText(r.strengths)}","${cleanCSVText(r.gaps)}","${cleanCSVText(imgInfo)}"\n`;
             });
 
             let link = document.createElement("a");
