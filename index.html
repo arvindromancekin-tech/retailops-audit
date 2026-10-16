@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RetailOps Romance - Live Sync Audit Portal</title>
+    <title>RetailOps Romance - Live Central Audit Portal</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -16,9 +16,7 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#f0f7ff', 100: '#e0effe', 500: '#2563eb', 600: '#1d4ed8', 700: '#1e40af', 900: '#1e3a8a',
-                        }
+                        brand: { 50: '#f0f7ff', 100: '#e0effe', 500: '#2563eb', 600: '#1d4ed8', 700: '#1e40af', 900: '#1e3a8a' }
                     },
                     fontFamily: { sans: ['Inter', 'sans-serif'] }
                 }
@@ -44,7 +42,7 @@
                     </div>
                     <div>
                         <h1 class="text-lg font-bold leading-tight">RetailOps Romance</h1>
-                        <p class="text-xs text-slate-400">Live Central Database Connected</p>
+                        <p class="text-xs text-slate-400" id="sync-status-text">Central Sheet Sync Ready</p>
                     </div>
                 </div>
 
@@ -73,7 +71,7 @@
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-center justify-between">
                 <div>
                     <h2 class="text-lg font-bold text-slate-900">Yearly Performance Dashboard</h2>
-                    <p class="text-xs text-slate-500">Real-time synced multi-device audit data</p>
+                    <p class="text-xs text-slate-500">Real-time synced multi-device audit database</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                     <div>
@@ -373,16 +371,26 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbx1PWI1ODmwMqyAjBuzn_KiOO3tkz3JUGwLXYMXwzk-7C0cO3wH8LF-6r93xx9IVL8N/exec";
+        // Updated Final Web App URL
+        const API_URL = "https://script.google.com/macros/s/AKfycbzB1BFqzbV82sHeCXNo48Cew7lVIDvO5sJftwDlu7kR-6MJfsOhUMA1XlHAbwSjMgwC/exec";
 
-        let STORES = JSON.parse(localStorage.getItem('retail_stores_v2')) || [];
+        let STORES = JSON.parse(localStorage.getItem('retail_stores_v2')) || [
+            { id: "MZ-001", name: "GSCOM INFO - 1", manager: "IMROZ HAMDAN NASIRBIN" },
+            { id: "MZ-002", name: "ROMCOM", manager: "BHAVYA JETHVA" },
+            { id: "MZ-003", name: "MOBILEZONE COMPUTER", manager: "ISRAR HUSSAIN" },
+            { id: "MZ-004", name: "MOBILE ZONE BOTOUR", manager: "BHAVIK MITHANI" },
+            { id: "MZ-005", name: "ROMANCE - 2", manager: "ALFAIZ KURESHI" },
+            { id: "MZ-006", name: "SAICOM - 2", manager: "DIVYESH JIVAMOKARIYA" },
+            { id: "MZ-007", name: "SAICOM - 1", manager: "UTTAM TANK" },
+            { id: "MZ-008", name: "ROMANCE - 1", manager: "ADIL ABDULAHBHAI RAVAS" }
+        ];
+
         let auditData = [];
         let trendChartInstance = null;
         let standardChartInstance = null;
         let standardViewModeType = 'bar';
         let pendingDeleteId = null;
 
-        // Security PIN Protection Function
         function checkSecurityPin() {
             const savedPin = "1234";
             const userPin = prompt("Portal access karne ke liye Security PIN darj karein:");
@@ -402,21 +410,22 @@
 
         async function fetchCloudData() {
             const syncIcon = document.getElementById('sync-icon');
+            const statusText = document.getElementById('sync-status-text');
             syncIcon.classList.add('fa-spin');
-            
-            if(API_URL && !API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
-                try {
-                    const response = await fetch(API_URL);
-                    const cloudData = await response.json();
-                    if(Array.isArray(cloudData)) {
-                        auditData = cloudData;
-                    }
-                } catch(e) {
-                    console.error("Cloud fetch failed, using local cache", e);
-                    auditData = JSON.parse(localStorage.getItem('retail_audit_data_v2')) || [];
+            statusText.innerText = "Syncing with Central Sheet...";
+
+            try {
+                const response = await fetch(API_URL);
+                const cloudData = await response.json();
+                if (Array.isArray(cloudData)) {
+                    auditData = cloudData;
+                    localStorage.setItem('retail_audit_data_v2', JSON.stringify(auditData));
+                    statusText.innerText = "Live Central Database Synced (" + auditData.length + " Records)";
                 }
-            } else {
+            } catch(e) {
+                console.warn("Cloud fetch failed, using fallback cache", e);
                 auditData = JSON.parse(localStorage.getItem('retail_audit_data_v2')) || [];
+                statusText.innerText = "Offline Mode (Cached Data Active)";
             }
 
             syncIcon.classList.remove('fa-spin');
@@ -534,15 +543,14 @@
                 images: imageUrls
             };
 
-            if(API_URL && !API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
-                try {
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: "add", data: newAudit })
-                    });
-                } catch(e) { console.error(e); }
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action: "add", data: newAudit })
+                });
+            } catch(e) { 
+                console.error("Cloud Post failed, saving locally", e); 
             }
 
             auditData.unshift(newAudit);
@@ -550,7 +558,7 @@
             document.getElementById('audit-form').reset();
             updateFormScores();
             switchTab('analytics');
-            setTimeout(fetchCloudData, 1000);
+            setTimeout(fetchCloudData, 1200);
         }
 
         function promptDeleteAudit(id) {
@@ -563,9 +571,11 @@
             if(isConfirmed && pendingDeleteId) {
                 auditData = auditData.filter(d => d.id !== pendingDeleteId);
                 localStorage.setItem('retail_audit_data_v2', JSON.stringify(auditData));
-                if(API_URL && !API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
-                    fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "delete", id: pendingDeleteId }) }).catch(e=>console.error(e));
-                }
+                fetch(API_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'text/plain' }, 
+                    body: JSON.stringify({ action: "delete", id: pendingDeleteId }) 
+                }).catch(e => console.error(e));
                 refreshAllViews();
             }
             pendingDeleteId = null;
@@ -656,7 +666,7 @@
                 if(d.storeManager && d.storeManager !== "Unassigned") {
                     if(!managersMap[d.storeManager]) managersMap[d.storeManager] = { stores: new Set(), totalScore: 0, count: 0 };
                     managersMap[d.storeManager].stores.add(d.store);
-                    managersMap[d.storeManager].totalScore += (d.totalScore || 0);
+                    managersMap[d.storeManager].totalScore += Number(d.totalScore || 0);
                     managersMap[d.storeManager].count += 1;
                 }
             });
@@ -696,7 +706,7 @@
             if(selectedStore !== "ALL") currentAudits = currentAudits.filter(d => d.store === selectedStore);
 
             let totalAuditsCount = currentAudits.length;
-            let avgCalculated = totalAuditsCount > 0 ? Math.round(currentAudits.reduce((acc, c) => acc + c.totalScore, 0) / totalAuditsCount) : 0;
+            let avgCalculated = totalAuditsCount > 0 ? Math.round(currentAudits.reduce((acc, c) => acc + Number(c.totalScore || 0), 0) / totalAuditsCount) : 0;
 
             document.getElementById('kpi-avg-score').innerText = totalAuditsCount > 0 ? avgCalculated + "%" : "--%";
             document.getElementById('kpi-total-audits').innerText = totalAuditsCount;
@@ -705,10 +715,10 @@
                 let stdTotals = { vm: [], inv: [], staff: [], pos: [] };
                 currentAudits.forEach(d => {
                     if(d.scores) {
-                        stdTotals.vm.push(d.scores.vm || d.totalScore);
-                        stdTotals.inv.push(d.scores.inv || d.totalScore);
-                        stdTotals.staff.push(d.scores.staff || d.totalScore);
-                        stdTotals.pos.push(d.scores.pos || d.totalScore);
+                        stdTotals.vm.push(Number(d.scores.vm || d.totalScore));
+                        stdTotals.inv.push(Number(d.scores.inv || d.totalScore));
+                        stdTotals.staff.push(Number(d.scores.staff || d.totalScore));
+                        stdTotals.pos.push(Number(d.scores.pos || d.totalScore));
                     }
                 });
                 let stdAvgs = [
@@ -735,7 +745,7 @@
             } else {
                 rankingEl.innerHTML = STORES.map(s => {
                     let sAudits = currentAudits.filter(d => d.store === s.name);
-                    let sAvg = sAudits.length > 0 ? Math.round(sAudits.reduce((acc,curr) => acc + curr.totalScore, 0)/sAudits.length) : null;
+                    let sAvg = sAudits.length > 0 ? Math.round(sAudits.reduce((acc,curr) => acc + Number(curr.totalScore || 0), 0)/sAudits.length) : null;
                     return `<div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border"><span class="text-xs font-bold">${s.name}</span><span class="text-xs font-extrabold ${sAvg !== null ? 'text-emerald-600' : 'text-slate-400'}">${sAvg !== null ? sAvg + '%' : 'No Entry'}</span></div>`;
                 }).join('');
             }
@@ -744,7 +754,7 @@
             let monthlyAvgScores = Array(12).fill(null);
             for(let m = 0; m < 12; m++) {
                 let mAudits = currentAudits.filter(d => Number(d.month) === m);
-                if(mAudits.length > 0) monthlyAvgScores[m] = Math.round(mAudits.reduce((a, c) => a + c.totalScore, 0) / mAudits.length);
+                if(mAudits.length > 0) monthlyAvgScores[m] = Math.round(mAudits.reduce((a, c) => a + Number(c.totalScore || 0), 0) / mAudits.length);
             }
 
             const ctx = document.getElementById('chart-monthly-trend').getContext('2d');
@@ -771,7 +781,7 @@
                 for(let m = 0; m < 12; m++) {
                     let mAudits = currentAudits.filter(d => Number(d.month) === m);
                     if(mAudits.length > 0) {
-                        let sum = mAudits.reduce((acc, c) => acc + (c.scores ? c.scores[row.key] : c.totalScore), 0);
+                        let sum = mAudits.reduce((acc, c) => acc + Number(c.scores ? c.scores[row.key] : c.totalScore), 0);
                         let avgM = Math.round(sum / mAudits.length);
                         row.data[m] = avgM + "%";
                         totalRowScores.push(avgM);
@@ -815,8 +825,8 @@
             const sortOrder = document.getElementById('hist-sort').value;
 
             let filtered = auditData.filter(d => (!filterDate || d.date === filterDate) && (!filterStore || d.store === filterStore) && (!filterMgr || d.storeManager === filterMgr));
-            if(sortOrder === 'asc') filtered.sort((a, b) => a.totalScore - b.totalScore);
-            else if(sortOrder === 'desc') filtered.sort((a, b) => b.totalScore - a.totalScore);
+            if(sortOrder === 'asc') filtered.sort((a, b) => Number(a.totalScore) - Number(b.totalScore));
+            else if(sortOrder === 'desc') filtered.sort((a, b) => Number(b.totalScore) - Number(a.totalScore));
 
             if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No audit reports match your criteria.</td></tr>`; return; }
 
@@ -848,7 +858,6 @@
 
         function closeImageModal() { document.getElementById('image-preview-modal').classList.add('hidden'); }
 
-        // Helper function to sanitize text for CSV export
         function cleanCSVText(text) {
             if (!text) return "";
             return String(text).replace(/"/g, '""').replace(/\n/g, ' ');
@@ -858,11 +867,7 @@
             const report = auditData.find(d => d.id === id);
             if(!report) return alert("Report not found.");
 
-            let imgInfo = "No Images";
-            if(report.images && report.images.length > 0) {
-                imgInfo = `${report.images.length} Image(s) Attached`;
-            }
-
+            let imgInfo = (report.images && report.images.length > 0) ? `${report.images.length} Image(s) Attached` : "No Images";
             let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
             csvContent += `"${cleanCSVText(report.store)}","${cleanCSVText(report.date)}","${cleanCSVText(report.storeManager)}","${report.totalScore}%","${cleanCSVText(report.strengths)}","${cleanCSVText(report.gaps)}","${cleanCSVText(imgInfo)}"\n`;
             
