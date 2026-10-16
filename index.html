@@ -355,7 +355,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
                 <table class="w-full text-xs text-left min-w-[600px]">
                     <thead class="bg-slate-100 border-b">
-                        <tr><th class="px-4 py-3">Store Name</th><th class="px-3 py-3">Audit Date</th><th class="px-3 py-3">Manager</th><th class="px-3 py-3 text-center">Score</th><th class="px-3 py-3 text-center">Images</th><th class="px-3 py-3 text-right">Actions</th></tr>
+                        <tr><th class="px-4 py-3">Store Name</th><th class="px-3 py-3">Audit Date & Time</th><th class="px-3 py-3">Manager</th><th class="px-3 py-3 text-center">Score</th><th class="px-3 py-3 text-center">Images</th><th class="px-3 py-3 text-right">Actions</th></tr>
                     </thead>
                     <tbody id="reports-table-body" class="divide-y"></tbody>
                 </table>
@@ -396,8 +396,7 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbzwIVir8x36OHMrf8bJBvsmHT0rTBq5juH6H50MiRDHeRku84Oeg9fHfE1-JSUZNmga/exec
-";
+        const API_URL = "https://script.google.com/macros/s/AKfycbysJGLc1mrJCRagzHbADHKIAwwvhRXXfgG6FtMB_Q17jbtcJrF18Ybk1FtV_cbAKdBY/exec";
 
         let DEFAULT_STORES = [
             { id: "MZ-001", name: "GSCOM INFO - 1", manager: "IMROZ HAMDAN NASIRBIN" },
@@ -429,7 +428,8 @@
 
         window.onload = function() {
             try { checkSecurityPin(); } catch(e) { return; }
-            document.getElementById('form-date').value = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            document.getElementById('form-date').value = now.toISOString().split('T')[0];
             fetchCloudData();
         };
 
@@ -588,6 +588,11 @@
             const smName = document.getElementById('form-sm').value;
             const auditDate = document.getElementById('form-date').value;
             
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const auditTime = `${hours}:${minutes}`;
+
             const vm = Number(document.getElementById('range-std-vm').value);
             const inv = Number(document.getElementById('range-std-inv').value);
             const staff = Number(document.getElementById('range-std-staff').value);
@@ -605,6 +610,7 @@
                 id: 'AUD-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
                 store: storeName,
                 date: auditDate,
+                time: auditTime,
                 month: dObj.getMonth(),
                 year: dObj.getFullYear(),
                 storeManager: smName,
@@ -921,10 +927,11 @@
             tbody.innerHTML = filtered.map(d => {
                 let imgCount = d.images ? d.images.length : 0;
                 let imgParam = d.images ? JSON.stringify(d.images).replace(/"/g, '&quot;') : '[]';
+                let dateTimeDisplay = (d.date || '') + (d.time ? ' ' + d.time : '');
                 return `
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3 font-semibold">${d.store}</td>
-                    <td class="px-3 py-3">${d.date}</td>
+                    <td class="px-3 py-3 font-bold text-slate-900">${dateTimeDisplay}</td>
                     <td class="px-3 py-3">${d.storeManager}</td>
                     <td class="px-3 py-3 text-center font-bold text-emerald-600">${d.totalScore}%</td>
                     <td class="px-3 py-3 text-center">
@@ -957,9 +964,10 @@
             const report = auditData.find(d => d.id === id);
             if(!report) return alert("Report not found.");
 
+            let dateTimeStr = (report.date || '') + (report.time ? ' ' + report.time : '');
             let imgInfo = (report.images && report.images.length > 0) ? `${report.images.length} Image(s) Attached` : "No Images";
-            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
-            csvContent += `"${cleanCSVText(report.store)}","${cleanCSVText(report.date)}","${cleanCSVText(report.storeManager)}","${report.totalScore}%","${cleanCSVText(report.strengths)}","${cleanCSVText(report.gaps)}","${cleanCSVText(imgInfo)}"\n`;
+            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date & Time,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
+            csvContent += `"${cleanCSVText(report.store)}","${cleanCSVText(dateTimeStr)}","${cleanCSVText(report.storeManager)}","${report.totalScore}%","${cleanCSVText(report.strengths)}","${cleanCSVText(report.gaps)}","${cleanCSVText(imgInfo)}"\n`;
             
             let encodedUri = encodeURI(csvContent);
             let link = document.createElement("a");
@@ -978,10 +986,11 @@
             let filtered = auditData.filter(d => d.date >= fromDate && d.date <= toDate);
             if(filtered.length === 0) return alert("No reports in range.");
 
-            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
+            let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date & Time,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
             filtered.forEach(r => {
+                let dateTimeStr = (r.date || '') + (r.time ? ' ' + r.time : '');
                 let imgInfo = (r.images && r.images.length > 0) ? `${r.images.length} Image(s) Attached` : "No Images";
-                csvContent += `"${cleanCSVText(r.store)}","${cleanCSVText(r.date)}","${cleanCSVText(r.storeManager)}","${r.totalScore}%","${cleanCSVText(r.strengths)}","${cleanCSVText(r.gaps)}","${cleanCSVText(imgInfo)}"\n`;
+                csvContent += `"${cleanCSVText(r.store)}","${cleanCSVText(dateTimeStr)}","${cleanCSVText(r.storeManager)}","${r.totalScore}%","${cleanCSVText(r.strengths)}","${cleanCSVText(r.gaps)}","${cleanCSVText(imgInfo)}"\n`;
             });
 
             let link = document.createElement("a");
