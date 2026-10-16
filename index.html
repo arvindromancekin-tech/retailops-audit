@@ -396,9 +396,10 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbz9Iveo1JJUmD26o0R3wScg5Go1Pqc3Oavv2C1j-fqjgEUtjXZTgJUsRteh1uhgR3SA/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbzwIVir8x36OHMrf8bJBvsmHT0rTBq5juH6H50MiRDHeRku84Oeg9fHfE1-JSUZNmga/exec
+";
 
-        let STORES = JSON.parse(localStorage.getItem('retail_stores_v2')) || [
+        let DEFAULT_STORES = [
             { id: "MZ-001", name: "GSCOM INFO - 1", manager: "IMROZ HAMDAN NASIRBIN" },
             { id: "MZ-002", name: "ROMCOM", manager: "BHAVYA JETHVA" },
             { id: "MZ-003", name: "MOBILEZONE COMPUTER", manager: "ISRAR HUSSAIN" },
@@ -409,6 +410,7 @@
             { id: "MZ-008", name: "ROMANCE - 1", manager: "ADIL ABDULAHBHAI RAVAS" }
         ];
 
+        let STORES = JSON.parse(localStorage.getItem('retail_stores_v2')) || DEFAULT_STORES;
         let auditData = [];
         let trendChartInstance = null;
         let standardChartInstance = null;
@@ -438,7 +440,7 @@
             if(statusText) statusText.innerText = "Syncing with Central Sheet...";
 
             try {
-                const response = await fetch(API_URL);
+                const response = await fetch(API_URL + "?t=" + new Date().getTime());
                 const cloudData = await response.json();
                 if (cloudData && typeof cloudData === 'object') {
                     if (Array.isArray(cloudData)) {
@@ -871,7 +873,7 @@
 
             const matrixBody = document.getElementById('standards-matrix-body');
             if(matrixBody) {
-                matrixBody.innerHTML = matrix.math ? '' : matrix.map(row => `
+                matrixBody.innerHTML = matrix.map(row => `
                     <tr class="hover:bg-slate-50 border-b">
                         <td class="px-4 py-3 font-bold text-slate-900">${row.name}</td>
                         ${row.data.map(val => `<td class="px-3 py-3 text-center ${val !== '--' ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${val}</td>`).join('')}
