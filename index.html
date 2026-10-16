@@ -396,7 +396,7 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbzB1BFqzbV82sHeCXNo48Cew7lVIDvO5sJftwDlu7kR-6MJfsOhUMA1XlHAbwSjMgwC/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbz9Iveo1JJUmD26o0R3wScg5Go1Pqc3Oavv2C1j-fqjgEUtjXZTgJUsRteh1uhgR3SA/exec";
 
         let STORES = JSON.parse(localStorage.getItem('retail_stores_v2')) || [
             { id: "MZ-001", name: "GSCOM INFO - 1", manager: "IMROZ HAMDAN NASIRBIN" },
@@ -417,7 +417,7 @@
 
         function checkSecurityPin() {
             const savedPin = "0504";
-            const userPin = prompt("Portal access karne ke liye Security PIN darj kar");
+            const userPin = prompt("Portal access karne ke liye Security PIN darj karein:");
             if (userPin !== savedPin) {
                 alert("Galat PIN! Access denied.");
                 document.body.innerHTML = "<div style='display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; text-align:center;'><div><h2 style='color:#ef4444; font-size:24px; font-weight:bold;'>Access Denied</h2><p style='color:#64748b; margin-top:8px;'>Sahi PIN darj karne par hi portal khulega.</p></div></div>";
@@ -428,7 +428,6 @@
         window.onload = function() {
             try { checkSecurityPin(); } catch(e) { return; }
             document.getElementById('form-date').value = new Date().toISOString().split('T')[0];
-            populateDropdowns();
             fetchCloudData();
         };
 
@@ -441,8 +440,16 @@
             try {
                 const response = await fetch(API_URL);
                 const cloudData = await response.json();
-                if (Array.isArray(cloudData)) {
-                    auditData = cloudData;
+                if (cloudData && typeof cloudData === 'object') {
+                    if (Array.isArray(cloudData)) {
+                        auditData = cloudData;
+                    } else if (cloudData.audits) {
+                        auditData = cloudData.audits;
+                        if (Array.isArray(cloudData.stores) && cloudData.stores.length > 0) {
+                            STORES = cloudData.stores;
+                            localStorage.setItem('retail_stores_v2', JSON.stringify(STORES));
+                        }
+                    }
                     localStorage.setItem('retail_audit_data_v2', JSON.stringify(auditData));
                     if(statusText) statusText.innerText = "Live Central Database Synced (" + auditData.length + " Records)";
                 }
@@ -453,7 +460,21 @@
             }
 
             if(syncIcon) syncIcon.classList.remove('fa-spin');
+            populateDropdowns();
             refreshAllViews();
+        }
+
+        async function syncStoresToCloud() {
+            localStorage.setItem('retail_stores_v2', JSON.stringify(STORES));
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action: "update_stores", stores: STORES })
+                });
+            } catch(e) {
+                console.error("Failed to sync stores to cloud", e);
+            }
         }
 
         function refreshAllViews() {
@@ -636,7 +657,7 @@
             const manager = document.getElementById('new-store-mgr').value || "Unassigned";
             if(!id || !name) return alert("Store ID and Name required");
             STORES.push({ id, name, manager });
-            localStorage.setItem('retail_stores_v2', JSON.stringify(STORES));
+            syncStoresToCloud();
             document.getElementById('new-store-id').value = '';
             document.getElementById('new-store-name').value = '';
             document.getElementById('new-store-mgr').value = '';
@@ -665,7 +686,7 @@
             if(!newName) return alert("Store name cannot be empty.");
             STORES[index].name = newName;
             STORES[index].manager = newMgr;
-            localStorage.setItem('retail_stores_v2', JSON.stringify(STORES));
+            syncStoresToCloud();
             populateDropdowns();
             refreshAllViews();
         }
@@ -673,7 +694,7 @@
         function deleteStore(index) {
             if(confirm("Are you sure you want to delete this store?")) {
                 STORES.splice(index, 1);
-                localStorage.setItem('retail_stores_v2', JSON.stringify(STORES));
+                syncStoresToCloud();
                 populateDropdowns();
                 refreshAllViews();
             }
@@ -850,7 +871,7 @@
 
             const matrixBody = document.getElementById('standards-matrix-body');
             if(matrixBody) {
-                matrixBody.innerHTML = matrix.map(row => `
+                matrixBody.innerHTML = matrix.math ? '' : matrix.map(row => `
                     <tr class="hover:bg-slate-50 border-b">
                         <td class="px-4 py-3 font-bold text-slate-900">${row.name}</td>
                         ${row.data.map(val => `<td class="px-3 py-3 text-center ${val !== '--' ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${val}</td>`).join('')}
@@ -958,7 +979,7 @@
             let csvContent = "data:text/csv;charset=utf-8,Store Name,Audit Date,Store Manager,Overall Score,Key Strengths & Observations,Critical Operational Gaps / CAPA,Images\n";
             filtered.forEach(r => {
                 let imgInfo = (r.images && r.images.length > 0) ? `${r.images.length} Image(s) Attached` : "No Images";
-                csvContent += `"${cleanCSVText(r.store)}","${cleanCSVText(r.date)}","${cleanCSVText(r.storeManager)}","${report.totalScore}%","${cleanCSVText(r.strengths)}","${cleanCSVText(r.gaps)}","${cleanCSVText(imgInfo)}"\n`;
+                csvContent += `"${cleanCSVText(r.store)}","${cleanCSVText(r.date)}","${cleanCSVText(r.storeManager)}","${r.totalScore}%","${cleanCSVText(r.strengths)}","${cleanCSVText(r.gaps)}","${cleanCSVText(imgInfo)}"\n`;
             });
 
             let link = document.createElement("a");
